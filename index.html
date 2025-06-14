@@ -7,19 +7,17 @@
   <title>Wartezeiten PWA</title>
 
   <link rel="manifest" href="manifest.json" />
-
   <link rel="apple-touch-icon" href="assets/waitingtimes_192.png" />
-
   <link rel="stylesheet" href="assets/styles.css" />
-
   <meta name="apple-mobile-web-app-capable" content="yes" />
-
 </head>
 <body>
   <header class="header">
     <h1>Wartezeiten</h1>
     <button id="refresh-btn" aria-label="Aktualisieren">🔄</button>
   </header>
+
+  <div id="status" class="status hidden">⚠️ Du bist offline</div>
 
   <main id="rides" class="rides">
     <p class="loading">Lade…</p>
@@ -29,30 +27,24 @@
     <small>Letztes Update: <span id="last-update">–</span></small>
   </footer>
 
-  <!-- Hauptscript -->
   <script>
     const rideIds = [6819, 6825, 5820, 6828, 6830, 6814, 11815, 6812, 6807, 6806, 6808, 6805, 8236];
+    let lastSuccessfulFetch = null;
 
     async function fetchRides() {
-      try {
-        const res = await fetch('https://api.allorigins.win/raw?url=https%3A%2F%2Fqueue%2Dtimes%2Ecom%2Fparks%2F56%2Fqueue%5Ftimes%2Ejson');
-        return await res.json();
-      } catch (e) {
-        console.error('Fehler beim Laden:', e);
-        return null;
-      }
+      const res = await fetch('https://api.allorigins.win/raw?url=https%3A%2F%2Fqueue%2Dtimes%2Ecom%2Fparks%2F56%2Fqueue%5Ftimes%2Ejson');
+      if (!res.ok) throw new Error('Netzwerkfehler');
+      return await res.json();
     }
 
     function renderRides(data) {
-      const allRides = [
-        ...data.rides,
-        ...data.lands.flatMap(land => land.rides)
-      ];
+      const allRides = [...data.rides, ...data.lands.flatMap(land => land.rides)];
       const filtered = allRides
         .filter(r => rideIds.includes(r.id))
-        .sort((a, b) => a.is_open === b.is_open
-          ? b.wait_time - a.wait_time
-          : a.is_open ? -1 : 1
+        .sort((a, b) =>
+          a.is_open === b.is_open
+            ? b.wait_time - a.wait_time
+            : a.is_open ? -1 : 1
         );
 
       const container = document.getElementById('rides');
@@ -60,19 +52,46 @@
       filtered.forEach(r => {
         const div = document.createElement('div');
         div.className = `ride ${r.is_open ? '' : 'closed'}`;
-        div.innerHTML = `<span class="name">${r.name}</span>
-                         <span class="time">${r.is_open ? r.wait_time + ' min' : 'geschlossen'}</span>`;
+        div.innerHTML = `
+          <span class="name">${r.name}</span>
+          <span class="time">${r.is_open ? r.wait_time + ' min' : 'geschlossen'}</span>
+        `;
         container.appendChild(div);
       });
-      document.getElementById('last-update').textContent = new Date().toLocaleTimeString('de-DE');
+    }
+
+    function setOfflineStatus(isOffline) {
+      const statusEl = document.getElementById('status');
+      statusEl.classList.toggle('hidden', !isOffline);
     }
 
     async function update() {
-      const data = await fetchRides();
-      if (data) renderRides(data);
+      const isOffline = !navigator.onLine;
+      setOfflineStatus(isOffline);
+
+      if (isOffline && lastSuccessfulFetch) {
+        renderRides(lastSuccessfulFetch);
+        return;
+      }
+
+      try {
+        const data = await fetchRides();
+        lastSuccessfulFetch = data;
+        renderRides(data);
+        document.getElementById('last-update').textContent =
+          new Date().toLocaleTimeString('de-DE');
+      } catch (e) {
+        console.warn('Fetch fehlgeschlagen, verwende zwischengespeicherte Daten:', e);
+        if (lastSuccessfulFetch) {
+          renderRides(lastSuccessfulFetch);
+        }
+        setOfflineStatus(true);
+      }
     }
 
     document.getElementById('refresh-btn').addEventListener('click', update);
+    window.addEventListener('online',  () => update());
+    window.addEventListener('offline', () => setOfflineStatus(true));
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
