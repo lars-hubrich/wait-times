@@ -29,20 +29,32 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  if (event.request.url.includes('allorigins.win')) {
-    event.respondWith(
-      fetch(event.request)
-        .then(res => {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-          return res;
-        })
-        .catch(() => caches.match(event.request))
-    );
-  } else {
-    event.respondWith(
-      caches.match(event.request)
-        .then(resp => resp || fetch(event.request))
-    );
+  const url = event.request.url;
+  if (url.includes('allorigins.win')) {
+    event.respondWith((async () => {
+      try {
+        const networkRes = await fetch(event.request);
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(event.request, networkRes.clone());
+        return networkRes;
+      } catch (err) {
+        const cachedRes = await caches.match(event.request);
+        if (!cachedRes) throw err;
+        const blob = await cachedRes.blob();
+        const headers = new Headers(cachedRes.headers);
+        headers.set('X-From-Cache', 'true');
+        return new Response(blob, {
+          status:    cachedRes.status,
+          statusText:cachedRes.statusText,
+          headers
+        });
+      }
+    })());
+    return;
   }
+
+  event.respondWith(
+    caches.match(event.request)
+      .then(resp => resp || fetch(event.request))
+  );
 });

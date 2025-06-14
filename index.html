@@ -32,13 +32,18 @@
     let lastSuccessfulFetch = null;
 
     async function fetchRides() {
-      const res = await fetch('https://api.allorigins.win/raw?url=https%3A%2F%2Fqueue%2Dtimes%2Ecom%2Fparks%2F56%2Fqueue%5Ftimes%2Ejson');
+      const res = await fetch(
+        'https://api.allorigins.win/raw?url=https%3A%2F%2Fqueue%2Dtimes%2Ecom%2Fparks%2F56%2Fqueue%5Ftimes%2Ejson'
+      );
       if (!res.ok) throw new Error('Netzwerkfehler');
+      if (res.headers.get('X-From-Cache') === 'true') {
+        throw new Error('CacheFallback');
+      }
       return await res.json();
     }
 
     function renderRides(data) {
-      const allRides = [...data.rides, ...data.lands.flatMap(land => land.rides)];
+      const allRides = [...data.rides, ...data.lands.flatMap(l => l.rides)];
       const filtered = allRides
         .filter(r => rideIds.includes(r.id))
         .sort((a, b) =>
@@ -61,15 +66,15 @@
     }
 
     function setOfflineStatus(isOffline) {
-      const statusEl = document.getElementById('status');
-      statusEl.classList.toggle('hidden', !isOffline);
+      document.getElementById('status')
+        .classList.toggle('hidden', !isOffline);
     }
 
     async function update() {
-      const isOffline = !navigator.onLine;
-      setOfflineStatus(isOffline);
+      const offline = !navigator.onLine;
+      setOfflineStatus(offline);
 
-      if (isOffline && lastSuccessfulFetch) {
+      if (offline && lastSuccessfulFetch) {
         renderRides(lastSuccessfulFetch);
         return;
       }
@@ -78,10 +83,10 @@
         const data = await fetchRides();
         lastSuccessfulFetch = data;
         renderRides(data);
-        document.getElementById('last-update').textContent =
-          new Date().toLocaleTimeString('de-DE');
+        document.getElementById('last-update')
+          .textContent = new Date().toLocaleTimeString('de-DE');
       } catch (e) {
-        console.warn('Fetch fehlgeschlagen, verwende zwischengespeicherte Daten:', e);
+        console.warn('Fetch fehlgeschlagen:', e);
         if (lastSuccessfulFetch) {
           renderRides(lastSuccessfulFetch);
         }
