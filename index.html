@@ -4,71 +4,84 @@
   <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Wartezeiten</title>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 1rem; }
-    h1 { margin-bottom: 1rem; }
-    .ride { margin: 0.5rem 0; }
-    .ride .closed { 
-      text-decoration: line-through; 
-      color: #888; 
-    }
-  </style>
+  <title>Wartezeiten PWA</title>
+
+  <link rel="manifest" href="manifest.json" />
+
+  <link rel="apple-touch-icon" href="assets/waitingtimes_192.png" />
+
+  <link rel="stylesheet" href="assets/styles.css" />
+
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+
 </head>
 <body>
-  <h1>Wartezeiten</h1>
-  <div id="rides">Lade…</div>
+  <header class="header">
+    <h1>Wartezeiten</h1>
+    <button id="refresh-btn" aria-label="Aktualisieren">🔄</button>
+  </header>
 
+  <main id="rides" class="rides">
+    <p class="loading">Lade…</p>
+  </main>
+
+  <footer class="footer">
+    <small>Letztes Update: <span id="last-update">–</span></small>
+  </footer>
+
+  <!-- Hauptscript -->
   <script>
-    const rideIds = [
-      6819,
-      6825,
-      5820, 6828, 6830,
-      6814, 11815, 6812,
-      6807, 6806, 6808, 6805,
-      8236,
-    ];
+    const rideIds = [6819, 6825, 5820, 6828, 6830, 6814, 11815, 6812, 6807, 6806, 6808, 6805, 8236];
 
-    async function updateRides() {
+    async function fetchRides() {
       try {
-        const res = await fetch('https://api.allorigins.win/raw?url=https%3A%2F%2Fqueue%2Dtimes%2Ecom%2Fparks%2F56%2Fqueue%5Ftimes%2Ejson');
-        const data = await res.json();
-
-        const allRides = [
-          ...data.rides,
-          ...data.lands.flatMap(land => land.rides)
-        ];
-
-        const filtered = allRides
-          .filter(r => rideIds.includes(r.id))
-          .sort((a, b) => {
-            if (a.is_open !== b.is_open) {
-              return a.is_open ? -1 : 1;
-            }
-            return b.wait_time - a.wait_time;
-          });
-
-        const container = document.getElementById('rides');
-        container.innerHTML = ''; 
-
-        filtered.forEach(r => {
-          const div = document.createElement('div');
-          div.className = 'ride';
-          const span = document.createElement('span');
-          if (!r.is_open) span.className = 'closed';
-          span.textContent = `${r.name}: ${r.wait_time} min`;
-          div.appendChild(span);
-          container.appendChild(div);
-        });
+        const res = await fetch('https://api.allorigins.win/raw?url=https://queue-times.com/parks/56/queue_times.json');
+        return await res.json();
       } catch (e) {
-        console.error('Fehler beim Laden der Daten:', e);
+        console.error('Fehler beim Laden:', e);
+        return null;
       }
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      updateRides();
-      setInterval(updateRides, 20000);
-    });
+    function renderRides(data) {
+      const allRides = [
+        ...data.rides,
+        ...data.lands.flatMap(land => land.rides)
+      ];
+      const filtered = allRides
+        .filter(r => rideIds.includes(r.id))
+        .sort((a, b) => a.is_open === b.is_open
+          ? b.wait_time - a.wait_time
+          : a.is_open ? -1 : 1
+        );
+
+      const container = document.getElementById('rides');
+      container.innerHTML = '';
+      filtered.forEach(r => {
+        const div = document.createElement('div');
+        div.className = `ride ${r.is_open ? '' : 'closed'}`;
+        div.innerHTML = `<span class="name">${r.name}</span>
+                         <span class="time">${r.is_open ? r.wait_time + ' min' : 'geschlossen'}</span>`;
+        container.appendChild(div);
+      });
+      document.getElementById('last-update').textContent = new Date().toLocaleTimeString('de-DE');
+    }
+
+    async function update() {
+      const data = await fetchRides();
+      if (data) renderRides(data);
+    }
+
+    document.getElementById('refresh-btn').addEventListener('click', update);
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js');
+      });
+    }
+
+    update();
+    setInterval(update, 20000);
   </script>
 </body>
 </html>
