@@ -35,7 +35,7 @@
 
     async function fetchRides() {
       try {
-        const res = await fetch('https://api.allorigins.win/raw?url=https://queue-times.com/parks/56/queue_times.json');
+        const res = await fetch('https://api.allorigins.win/raw?url=https%3A%2F%2Fqueue%2Dtimes%2Ecom%2Fparks%2F56%2Fqueue%5Ftimes%2Ejson');
         return await res.json();
       } catch (e) {
         console.error('Fehler beim Laden:', e);

@@ -29,7 +29,7 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  if (event.request.url.includes('queue-times.com')) {
+  if (event.request.url.includes('allorigins.win')) {
     event.respondWith(
       fetch(event.request)
         .then(res => {
