@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wartezeiten-v4';
+const CACHE_NAME = 'wartezeiten-v5';
 const PRECACHE_URLS = [
   './',
   './index.html',

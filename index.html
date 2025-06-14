@@ -33,7 +33,7 @@
 
     async function fetchRides() {
       const res = await fetch(
-        'https://api.allorigins.win/raw?url=https%3A%2F%2Fqueue%2Dtimes%2Ecom%2Fparks%2F56%2Fqueue%5Ftimes%2Ejson'
+        'https://api.allorigins.win/raw?url=https%3A%2F%2Fqueue%2Dtimes%2Ecom%2Fparks%2F56%2Fqueue%5Ftimes%2Ejson?t=' + Date.now()
       );
       if (!res.ok) throw new Error('Netzwerkfehler');
       if (res.headers.get('X-From-Cache') === 'true') {
