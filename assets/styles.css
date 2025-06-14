@@ -1,5 +1,6 @@
 * {
-  margin: 0; padding: 0;
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 
@@ -25,7 +26,9 @@ body {
   align-items: center;
 }
 
-.header h1 { font-size: 1.5rem; }
+.header h1 {
+  font-size: 1.5rem;
+}
 
 .header button {
   background: none;
@@ -42,6 +45,7 @@ body {
   color: #900;
   font-weight: bold;
 }
+
 .status.hidden {
   display: none;
 }
@@ -69,8 +73,13 @@ body {
   text-decoration: line-through;
 }
 
-.name { font-weight: 600; }
-.time { font-size: 1.2rem; }
+.name {
+  font-weight: 600;
+}
+
+.time {
+  font-size: 1.2rem;
+}
 
 .loading {
   grid-column: 1/-1;
@@ -78,4 +87,6 @@ body {
   font-style: italic;
 }
 
-.footer small { font-size: 0.9rem; }
+.footer small {
+  font-size: 0.9rem;
+}

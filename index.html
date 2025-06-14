@@ -5,7 +5,6 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Wartezeiten PWA</title>
-
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="assets/waitingtimes_192.png" />
   <link rel="stylesheet" href="assets/styles.css" />
@@ -16,86 +15,58 @@
     <h1>Wartezeiten</h1>
     <button id="refresh-btn" aria-label="Aktualisieren">🔄</button>
   </header>
-
   <div id="status" class="status hidden">⚠️ Du bist offline</div>
-
   <main id="rides" class="rides">
     <p class="loading">Lade…</p>
   </main>
-
   <footer class="footer">
     <small>Letztes Update: <span id="last-update">–</span></small>
   </footer>
-
   <script>
-    const rideIds = [6819, 6825, 5820, 6828, 6830, 6814, 11815, 6812, 6807, 6806, 6808, 6805, 8236];
+    const apiUrl = 'https://api.allorigins.win/raw?url=https%3A%2F%2Fqueue-times.com%2Fparks%2F56%2Fqueue_times.json';
+    const rideIds = [6819,6825,5820,6828,6830,6814,11815,6812,6807,6806,6808,6805,8236];
     let lastSuccessfulFetch = null;
 
-    async function fetchRides() {
-      const res = await fetch(
-        'https://api.allorigins.win/raw?url=https%3A%2F%2Fqueue%2Dtimes%2Ecom%2Fparks%2F56%2Fqueue%5Ftimes%2Ejson'
-      );
-      if (!res.ok) throw new Error('Netzwerkfehler');
-      if (res.headers.get('X-From-Cache') === 'true') {
-        throw new Error('CacheFallback');
-      }
-      return await res.json();
+    function setOfflineStatus(isOffline) {
+      document.getElementById('status').classList.toggle('hidden', !isOffline);
     }
 
     function renderRides(data) {
       const allRides = [...data.rides, ...data.lands.flatMap(l => l.rides)];
       const filtered = allRides
         .filter(r => rideIds.includes(r.id))
-        .sort((a, b) =>
-          a.is_open === b.is_open
-            ? b.wait_time - a.wait_time
-            : a.is_open ? -1 : 1
-        );
-
+        .sort((a,b) => a.is_open===b.is_open ? b.wait_time-a.wait_time : a.is_open?-1:1);
       const container = document.getElementById('rides');
       container.innerHTML = '';
       filtered.forEach(r => {
         const div = document.createElement('div');
-        div.className = `ride ${r.is_open ? '' : 'closed'}`;
-        div.innerHTML = `
-          <span class="name">${r.name}</span>
-          <span class="time">${r.is_open ? r.wait_time + ' min' : 'geschlossen'}</span>
-        `;
+        div.className = `ride ${r.is_open?'':'closed'}`;
+        div.innerHTML = `<span class="name">${r.name}</span><span class="time">${r.is_open?r.wait_time+' min':'geschlossen'}</span>`;
         container.appendChild(div);
       });
     }
 
-    function setOfflineStatus(isOffline) {
-      document.getElementById('status')
-        .classList.toggle('hidden', !isOffline);
-    }
-
-    async function update() {
-      const offline = !navigator.onLine;
-      setOfflineStatus(offline);
-
-      if (offline && lastSuccessfulFetch) {
-        renderRides(lastSuccessfulFetch);
-        return;
-      }
-
+    async function loadRides() {
       try {
-        const data = await fetchRides();
+        const response = await fetch(apiUrl, { cache: 'no-store', headers: {'Cache-Control':'no-store','Pragma':'no-cache'} });
+        if (!response.ok) throw new Error(response.status);
+        const data = await response.json();
         lastSuccessfulFetch = data;
         renderRides(data);
-        document.getElementById('last-update')
-          .textContent = new Date().toLocaleTimeString('de-DE');
-      } catch (e) {
-        console.warn('Fetch fehlgeschlagen:', e);
+        document.getElementById('last-update').textContent = new Date().toLocaleTimeString('de-DE');
+        setOfflineStatus(false);
+      } catch {
         if (lastSuccessfulFetch) {
           renderRides(lastSuccessfulFetch);
+        } else {
+          document.getElementById('rides').innerHTML = '<p>Keine Daten verfügbar.</p>';
         }
         setOfflineStatus(true);
       }
     }
 
-    document.getElementById('refresh-btn').addEventListener('click', update);
-    window.addEventListener('online',  () => update());
+    document.getElementById('refresh-btn').addEventListener('click', loadRides);
+    window.addEventListener('online', loadRides);
     window.addEventListener('offline', () => setOfflineStatus(true));
 
     if ('serviceWorker' in navigator) {
@@ -104,8 +75,8 @@
       });
     }
 
-    update();
-    setInterval(update, 20000);
+    loadRides();
+    setInterval(loadRides, 20000);
   </script>
 </body>
 </html>
