@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wartezeiten-v3';
+const CACHE_NAME = 'wartezeiten-v4';
 const PRECACHE_URLS = [
   './',
   './index.html',
@@ -29,38 +29,25 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-  if (url.href.includes('queue_times.json')) {
+  const url = event.request.url;
+  if (url.includes('allorigins.win')) {
     event.respondWith((async () => {
       try {
-        const networkResponse = await fetch(event.request, { cache: 'no-store' });
-        if (networkResponse.ok) {
-          const cache = await caches.open(CACHE_NAME);
-          cache.put(event.request, networkResponse.clone());
-        }
-        return networkResponse;
-      } catch {
-        const cached = await caches.match(event.request);
-        if (cached) return cached;
-        return new Response(JSON.stringify({ error: 'offline' }), {
-          status: 503,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-    })());
-    return;
-  }
-
-  if (event.request.mode === 'navigate') {
-    event.respondWith((async () => {
-      try {
-        const networkResponse = await fetch(event.request);
+        const networkRes = await fetch(event.request);
         const cache = await caches.open(CACHE_NAME);
-        cache.put(event.request, networkResponse.clone());
-        return networkResponse;
-      } catch {
-        const cached = await caches.match(event.request);
-        return cached || new Response('Offline', { status: 503 });
+        cache.put(event.request, networkRes.clone());
+        return networkRes;
+      } catch (err) {
+        const cachedRes = await caches.match(event.request);
+        if (!cachedRes) throw err;
+        const blob = await cachedRes.blob();
+        const headers = new Headers(cachedRes.headers);
+        headers.set('X-From-Cache', 'true');
+        return new Response(blob, {
+          status:    cachedRes.status,
+          statusText:cachedRes.statusText,
+          headers
+        });
       }
     })());
     return;
