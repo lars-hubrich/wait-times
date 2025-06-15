@@ -1,7 +1,7 @@
-const CACHE_NAME = 'wartezeiten-cache-v1';
+const CACHE_NAME = 'wartezeiten-cache-v2';
 const ASSETS = [
-  '/', '/index.html', '/app.js',
-  '/assets/styles.css', '/assets/waitingtimes_192.png'
+  '.', './index.html', './app.js',
+  './assets/styles.css', './assets/waitingtimes_192.png'
 ];
 
 self.addEventListener('install', evt => {
