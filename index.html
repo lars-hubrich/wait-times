@@ -1,108 +1,42 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" class="dark">
 <head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Wartezeiten PWA</title>
 
-  <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" href="assets/waitingtimes_192.png" />
-  <link rel="stylesheet" href="assets/styles.css" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/assets/waitingtimes_192.png">
+  <meta name="theme-color" content="#4F46E5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <header class="header">
-    <h1>Wartezeiten</h1>
-    <button id="refresh-btn" aria-label="Aktualisieren">🔄</button>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col">
+
+  <header class="flex items-center justify-between p-4 bg-white dark:bg-gray-800 shadow-md">
+    <h1 class="text-xl font-semibold">🎢 Wartezeiten</h1>
+    <button id="refresh-btn" aria-label="Aktualisieren" 
+            class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      🔄
+    </button>
   </header>
 
-  <div id="status" class="status hidden">⚠️ Du bist offline</div>
+  <div id="status" class="hidden bg-yellow-200 text-yellow-800 text-center py-2">
+    ⚠️ Du bist offline
+  </div>
 
-  <main id="rides" class="rides">
-    <p class="loading">Lade…</p>
+  <!-- Hauptbereich -->
+  <main id="rides" class="flex-1 p-4 grid gap-4 
+                           grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+    <p class="col-span-full text-center text-gray-500">Lade…</p>
   </main>
 
-  <footer class="footer">
-    <small>Letztes Update: <span id="last-update">–</span></small>
+  <footer class="p-4 text-center text-sm bg-white dark:bg-gray-800 shadow-inner">
+    <small>Letztes Update: <time id="last-update">–</time></small>
   </footer>
 
-  <script>
-    const rideIds = [6819, 6825, 5820, 6828, 6830, 6814, 11815, 6812, 6807, 6806, 6808, 6805, 8236];
-    const STORAGE_KEY = 'wartezeiten-data';
-
-    function renderRides(data) {
-      const all = [...data.rides, ...data.lands.flatMap(l => l.rides)];
-      const filtered = all
-        .filter(r => rideIds.includes(r.id))
-        .sort((a, b) =>
-          a.is_open === b.is_open
-            ? b.wait_time - a.wait_time
-            : a.is_open ? -1 : 1
-        );
-
-      const container = document.getElementById('rides');
-      container.innerHTML = '';
-      filtered.forEach(r => {
-        const div = document.createElement('div');
-        div.className = `ride ${r.is_open ? '' : 'closed'}`;
-        div.innerHTML = `
-          <span class="name">${r.name}</span>
-          <span class="time">${r.is_open ? r.wait_time + ' min' : 'geschlossen'}</span>
-        `;
-        container.appendChild(div);
-      });
-    }
-
-    function setOfflineStatus(isOffline) {
-      document.getElementById('status').classList.toggle('hidden', !isOffline);
-    }
-
-    async function fetchAndStore() {
-      const res = await fetch(
-        'https://api.allorigins.win/raw?url=https%3A%2F%2Fqueue-times.com%2Fparks%2F56%2Fqueue_times.json?t=' +
-          Date.now()
-      );
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
-      return data;
-    }
-
-    async function update() {
-      const offline = !navigator.onLine;
-      setOfflineStatus(offline);
-
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const { data, timestamp } = JSON.parse(stored);
-        renderRides(data);
-        document.getElementById('last-update').textContent = new Date(timestamp).toLocaleTimeString('de-DE');
-      }
-
-      if (offline) return;
-
-      try {
-        const fresh = await fetchAndStore();
-        renderRides(fresh);
-        document.getElementById('last-update').textContent = new Date().toLocaleTimeString('de-DE');
-      } catch {
-        setOfflineStatus(true);
-      }
-    }
-
-    document.getElementById('refresh-btn').addEventListener('click', update);
-    window.addEventListener('online', update);
-    window.addEventListener('offline', () => setOfflineStatus(true));
-
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js');
-      });
-    }
-
-    update();
-    setInterval(update, 10000);
-  </script>
+  <script type="module" src="/app.js"></script>
 </body>
 </html>

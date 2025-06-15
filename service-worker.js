@@ -1,34 +1,44 @@
-const CACHE_NAME = 'wartezeiten-v6';
-const PRECACHE_URLS = [
-  './',
-  './index.html',
-  './assets/styles.css',
-  './manifest.json',
-  './assets/waitingtimes_192.png',
-  './assets/waitingtimes_512.png'
+const CACHE_NAME = 'wartezeiten-cache-v1';
+const ASSETS = [
+  '/', '/index.html', '/app.js',
+  '/assets/styles.css', '/assets/waitingtimes_192.png'
 ];
 
-self.addEventListener('install', event => {
-  event.waitUntil(
+self.addEventListener('install', evt => {
+  evt.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(PRECACHE_URLS))
-      .then(() => self.skipWaiting())
+      .then(cache => cache.addAll(ASSETS))
   );
+  self.skipWaiting();
 });
 
-self.addEventListener('activate', event => {
-  event.waitUntil(
+self.addEventListener('activate', evt => {
+  evt.waitUntil(
     caches.keys().then(keys =>
       Promise.all(
-        keys.map(key => key !== CACHE_NAME && caches.delete(key))
+        keys.filter(key => key !== CACHE_NAME)
+            .map(key => caches.delete(key))
       )
-    ).then(() => self.clients.claim())
+    )
   );
+  self.clients.claim();
 });
 
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(cached => cached || fetch(event.request))
-  );
+self.addEventListener('fetch', evt => {
+  if (evt.request.url.includes('/queue_times.json')) {
+    evt.respondWith(
+      fetch(evt.request)
+        .then(res => {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(evt.request, clone));
+          return res;
+        })
+        .catch(() => caches.match(evt.request))
+    );
+  } else {
+    evt.respondWith(
+      caches.match(evt.request)
+        .then(cached => cached || fetch(evt.request))
+    );
+  }
 });
